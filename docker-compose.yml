@@ -1,0 +1,85 @@
+
+services:
+  postgres-tier1:
+    image: postgres:15
+    container_name: postgres-tier1
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: veriplace
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db-init/postgres:/docker-entrypoint-initdb.d
+    networks:
+      - veriplace-network
+    restart: unless-stopped
+
+  mongo-tier2:
+    image: mongo:7
+    container_name: mongo-tier2
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo
+      MONGO_INITDB_ROOT_PASSWORD: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./db-init/mongo:/docker-entrypoint-initdb.d
+    networks:
+      - veriplace-network
+    restart: unless-stopped
+
+  audit-daemon:
+    build:
+      context: ./audit-daemon
+      dockerfile: Dockerfile
+    container_name: audit-daemon
+    environment:
+      POSTGRES_URL: postgresql://postgres:postgres@postgres-tier1:5432/veriplace
+      MONGO_URL: mongodb://mongo:mongo@mongo-tier2:27017/admin
+    ports:
+      - "8765:8765"
+    networks:
+      - veriplace-network
+    depends_on:
+      - postgres-tier1
+      - mongo-tier2
+    restart: on-failure
+
+  backend-api:
+    build:
+      context: ./backend-api
+      dockerfile: Dockerfile
+    container_name: backend-api
+    environment:
+      POSTGRES_URL: postgresql://postgres:postgres@postgres-tier1:5432/veriplace
+      MONGO_URL: mongodb://mongo:mongo@mongo-tier2:27017/admin
+    ports:
+      - "8000:8000"
+    networks:
+      - veriplace-network
+    depends_on:
+      - postgres-tier1
+      - mongo-tier2
+    restart: on-failure
+
+  frontend-dashboard:
+    build:
+      context: ./frontend-dashboard
+      dockerfile: Dockerfile
+    container_name: frontend-dashboard
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_WS_URL=ws://localhost:8765
+    ports:
+      - "3000:3000"
+    networks:
+      - veriplace-network
+    depends_on:
+      - backend-api
+      - audit-daemon
+    restart: on-failure
+
+networks:
+  veriplace-network:
+    driver: bridge

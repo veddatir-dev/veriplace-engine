@@ -1,0 +1,21 @@
+# Node
+
+frontend-dashboard/node_modules/
+frontend-dashboard/dist/
+frontend-dashboard/.npm/
+
+# Python
+
+**/*pycache/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# OS/System
+
+.DS_Store
+Thumbs.db
